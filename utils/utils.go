@@ -34,6 +34,6 @@ func (j *JsonHandler) WriteJson(w http.ResponseWriter, status int, v any) error 
 
 }
 
-func (j *JsonHandler) WriteError(w http.ResponseWriter, status int, v any) {
-	j.WriteJson(w, status, v)
+func (j *JsonHandler) WriteError(w http.ResponseWriter, status int, err error) {
+	j.WriteJson(w, status, map[string]string{"error": err.Error()})
 }
