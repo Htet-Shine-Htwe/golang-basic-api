@@ -1,6 +1,7 @@
 package user
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/dede182/revesion/types"
@@ -9,10 +10,13 @@ import (
 )
 
 type Handler struct {
+	store types.UserStore
 }
 
-func NewHandler() *Handler {
-	return &Handler{}
+func NewHandler(store types.UserStore) *Handler {
+	return &Handler{
+		store: store,
+	}
 }
 
 func (h *Handler) RegisterRoutes(r *mux.Router) {
@@ -23,15 +27,39 @@ func (h *Handler) RegisterRoutes(r *mux.Router) {
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	jsonHandler := utils.NewHandler()
 
+	var loginPayload types.LoginUserPayload
+	if err := jsonHandler.ValidateBody(r, loginPayload); err != nil {
+		jsonHandler.WriteError(w, http.StatusBadRequest, err)
+	}
+
 }
 
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	jsonHandler := utils.NewHandler()
-	jsonHandler.SetupHeader(w)
 
-	var user types.RegisterUserPayload
-	if err := jsonHandler.ValidateBody(r, user); err != nil {
+	var registerPayload types.RegisterUserPayload
+	if err := jsonHandler.ValidateBody(r, registerPayload); err != nil {
 		jsonHandler.WriteError(w, http.StatusBadRequest, err)
 	}
+
+	// check user with same email already exists
+	_, err := h.store.GetUserByEmail(registerPayload.Email)
+	if err == nil {
+		jsonHandler.WriteError(w, http.StatusBadRequest, fmt.Errorf("user with %s already exists", registerPayload.Email))
+		return
+	}
+
+	err = h.store.CreateUser(types.User{
+		FirstName: registerPayload.FirstName,
+		LastName:  registerPayload.LastName,
+		Email:     registerPayload.Email,
+		Password:  registerPayload.Password,
+	})
+
+	if err != nil {
+		jsonHandler.WriteError(w, http.StatusBadRequest, err)
+	}
+
+	jsonHandler.WriteJson(w, http.StatusCreated, nil)
 
 }
