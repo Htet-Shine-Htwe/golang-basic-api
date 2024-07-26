@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/dede182/revesion/service/auth"
 	"github.com/dede182/revesion/types"
 	"github.com/dede182/revesion/utils"
 	"github.com/gorilla/mux"
@@ -35,6 +36,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
+
 	jsonHandler := utils.NewHandler()
 
 	var registerPayload types.RegisterUserPayload
@@ -49,11 +51,18 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hashedPassword, err := auth.HashPassword(registerPayload.Password)
+
+	if err == nil {
+		jsonHandler.WriteError(w, http.StatusBadRequest, fmt.Errorf("user with %s already exists", registerPayload.Email))
+		return
+	}
+
 	err = h.store.CreateUser(types.User{
 		FirstName: registerPayload.FirstName,
 		LastName:  registerPayload.LastName,
 		Email:     registerPayload.Email,
-		Password:  registerPayload.Password,
+		Password:  hashedPassword,
 	})
 
 	if err != nil {
