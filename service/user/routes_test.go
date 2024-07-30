@@ -19,61 +19,51 @@ func TestUserServiceHandler(t *testing.T) {
 	userStore := &mockUserStore{}
 	handler := NewHandler(userStore)
 
-	t.Run("should fail if the payload is invalid", func(t *testing.T) {
+	testCases := []struct {
+		name         string
+		payload      types.RegisterUserPayload
+		expectedCode int
+	}{
+		{
+			name: "should fail if the payload is invalid",
+			payload: types.RegisterUserPayload{
+				FirstName: "test",
+				LastName:  "last",
+				Email:     "asdfgmail.com",
+				Password:  "asdffdsa",
+			},
+			expectedCode: http.StatusBadRequest,
+		},
+		{
+			name: "test user can correctly register",
+			payload: types.RegisterUserPayload{
+				FirstName: "test",
+				LastName:  "last",
+				Email:     "asdf@gmail.com",
+				Password:  "asdffdsa",
+			},
+			expectedCode: http.StatusCreated,
+		}}
 
-		payload := types.RegisterUserPayload{
-			FirstName: "test",
-			LastName:  "last",
-			Email:     "asdfgmail.com",
-			Password:  "asdffdsa",
-		}
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			marshalled, _ := json.Marshal(tt.payload)
+			req, err := http.NewRequest("POST", "/register", bytes.NewBuffer(marshalled))
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		marshalled, _ := json.Marshal(payload)
+			rr := httptest.NewRecorder()
+			router := mux.NewRouter()
 
-		req, err := http.NewRequest("POST", "/register", bytes.NewBuffer(marshalled))
+			router.HandleFunc("/register", handler.handleRegister)
+			router.ServeHTTP(rr, req)
 
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		rr := httptest.NewRecorder()
-		router := mux.NewRouter()
-
-		router.HandleFunc("/register", handler.handleRegister)
-		router.ServeHTTP(rr, req)
-
-		if rr.Code != http.StatusBadRequest {
-			t.Errorf("expected status code %d,got %d", http.StatusBadRequest, rr.Code)
-		}
-	})
-
-	t.Run("test user can correctly registered", func(t *testing.T) {
-
-		payload := types.RegisterUserPayload{
-			FirstName: "test",
-			LastName:  "last",
-			Email:     "asdf@gmail.com",
-			Password:  "asdffdsa",
-		}
-
-		marshalled, _ := json.Marshal(payload)
-
-		req, err := http.NewRequest("POST", "/register", bytes.NewBuffer(marshalled))
-
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		rr := httptest.NewRecorder()
-		router := mux.NewRouter()
-
-		router.HandleFunc("/register", handler.handleRegister)
-		router.ServeHTTP(rr, req)
-
-		if rr.Code != http.StatusCreated {
-			t.Errorf("expected status code %d,got %d", http.StatusCreated, rr.Code)
-		}
-	})
+			if rr.Code != tt.expectedCode {
+				t.Errorf("expected status code %d,got %d", tt.expectedCode, rr.Code)
+			}
+		})
+	}
 }
 
 func (m *mockUserStore) GetUserByEmail(email string) (*types.User, error) {
