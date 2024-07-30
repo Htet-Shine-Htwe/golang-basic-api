@@ -7,6 +7,7 @@ import (
 	"github.com/dede182/revesion/service/auth"
 	"github.com/dede182/revesion/types"
 	"github.com/dede182/revesion/utils"
+	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 )
 
@@ -40,8 +41,15 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	jsonHandler := utils.NewHandler()
 
 	var registerPayload types.RegisterUserPayload
-	if err := jsonHandler.ValidateBody(r, registerPayload); err != nil {
+	if err := jsonHandler.ValidateBody(r, &registerPayload); err != nil {
 		jsonHandler.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := utils.Validator.Struct(registerPayload); err != nil {
+		validationErrors := err.(validator.ValidationErrors)
+		jsonHandler.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid payload %v", validationErrors))
+		return
 	}
 
 	// check user with same email already exists
@@ -53,8 +61,8 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	hashedPassword, err := auth.HashPassword(registerPayload.Password)
 
-	if err == nil {
-		jsonHandler.WriteError(w, http.StatusBadRequest, fmt.Errorf("user with %s already exists", registerPayload.Email))
+	if err != nil {
+		jsonHandler.WriteError(w, http.StatusInternalServerError, fmt.Errorf("user with %s already exists", registerPayload.Email))
 		return
 	}
 
