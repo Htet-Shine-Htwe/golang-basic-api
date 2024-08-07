@@ -12,10 +12,11 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type mockUserStore struct{}
+type mockedUserStore struct{}
 
-func TestUserServiceHandler(t *testing.T) {
-	userStore := &mockUserStore{}
+func TestUserServiceHandlerStore(t *testing.T) {
+
+	userStore := &mockedUserStore{}
 	handler := NewHandler(userStore)
 
 	testCases := []struct {
@@ -24,13 +25,8 @@ func TestUserServiceHandler(t *testing.T) {
 		expectedCode int
 	}{
 		{
-			name: "should fail if the payload is invalid",
-			payload: types.RegisterUserPayload{
-				FirstName: "test",
-				LastName:  "last",
-				Email:     "asdfgmail.com",
-				Password:  "asdffdsa",
-			},
+			name:         "should fail if the payload is invalid",
+			payload:      types.RegisterUserPayload{},
 			expectedCode: http.StatusBadRequest,
 		},
 		{
@@ -42,17 +38,20 @@ func TestUserServiceHandler(t *testing.T) {
 				Password:  "asdffdsa",
 			},
 			expectedCode: http.StatusCreated,
-		}}
+		},
+	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			marshalled, _ := json.Marshal(tt.payload)
-			req, err := http.NewRequest("POST", "/register", bytes.NewBuffer(marshalled))
+			marshelled, _ := json.Marshal(tt.payload)
+
+			req, err := http.NewRequest("POST", "/register", bytes.NewBuffer(marshelled))
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			rr := httptest.NewRecorder()
+
 			router := mux.NewRouter()
 
 			router.HandleFunc("/register", handler.handleRegister)
@@ -60,19 +59,21 @@ func TestUserServiceHandler(t *testing.T) {
 
 			if rr.Code != tt.expectedCode {
 				t.Errorf("expected status code %d,got %d", tt.expectedCode, rr.Code)
+
 			}
 		})
 	}
+
 }
 
-func (m *mockUserStore) GetUserByEmail(email string) (*types.User, error) {
-	return nil, fmt.Errorf("user not found")
+func (m *mockedUserStore) GetUserByEmail(email string) (*types.User, error) {
+	return nil, fmt.Errorf("User not found")
 }
 
-func (m *mockUserStore) GetUserById(id int) (*types.User, error) {
-	return nil, nil
+func (m *mockedUserStore) GetUserById(id int) (*types.User, error) {
+	return nil, fmt.Errorf("User not found")
 }
 
-func (m *mockUserStore) CreateUser(types.User) error {
+func (m *mockedUserStore) CreateUser(types.User) error {
 	return nil
 }
